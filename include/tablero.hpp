@@ -8,5 +8,11 @@ private:
 
 public:
     int marcarPunto(int x, int y, char jugador);
-    void dibujar();
+
+    // Getter de solo lectura. Lo usa la capa de render para saber que
+    // dibujar en cada celda. No contiene logica de juego.
+    char en(int x, int y) const;
+
+    char checarGanador();
+
 };
