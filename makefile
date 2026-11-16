@@ -1,0 +1,5 @@
+CXX = g++
+CXXFLAGS = -std=c++17 -Wall -Wextra -Iinclude
+
+all:
+	$(CXX) $(CXXFLAGS) src/*.cpp -o build/miniMAX
