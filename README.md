@@ -2,6 +2,9 @@
 
 Interfaz gráfica en [raylib](https://www.raylib.com/) para un tres en raya (gato) en C++17.
 
+El juego tiene tres pantallas: **inicio** (eliges quién empieza), **partida** y
+**resultado** (`GANASTE` / `GANÓ LA MÁQUINA` / `EMPATE`, y `Enter` para volver al inicio).
+
 ---
 
 ## Índice
@@ -28,7 +31,8 @@ Interfaz gráfica en [raylib](https://www.raylib.com/) para un tres en raya (gat
 | Resaltado de la celda bajo el mouse | IA / minimax |
 | Línea amarilla sobre la jugada ganadora | Detección de empate |
 | Texto de estado y de ayuda | Reinicio de partida |
-| Conversión mouse → celda (0..8) | Validación de jugadas |
+| Botones, textos centrados y panel de resultado | Decidir quién empieza |
+| Conversión mouse → celda (`{fila, col}`) | Validación de jugadas |
 
 La frontera es simple: **el render nunca modifica el tablero**. Todas sus funciones
 reciben el tablero como `const&` y solo llaman a `Tablero::en(fila, col)`.
@@ -101,23 +105,53 @@ Abre la ventana con un tablero de ejemplo para que veas colores, hover y tipogra
 | `make debug` | `build/miniMAX-debug` sin optimizar (`-O0 -g`), para `gdb` |
 | `make clean` | borra `build/` |
 
-> Ahora mismo `src/main.cpp` está vacío, así que `make run` abre y cierra al
-> instante. Es tu archivo: ahí va tu lógica.
+> `src/main.cpp` ya trae el juego completo: pantalla de inicio, turnos, máquina con
+> minimax y pantalla de resultado. Es tu archivo, así que puedes reescribirlo.
 
-Ventana resultante (560×600):
+Ventana resultante (**840×920**). Pantalla de inicio:
 
 ```
-┌─────────────────────────────┐
-│  Ganaste!                   │  <- dibujarMensaje()
-│  ┌─────┬─────┬─────┐        │
-│  │  X──┼──X──┼──X  │        │  <- resaltarLinea()
-│  ├─────┼─────┼─────┤        │
-│  │     │  O  │     │        │
-│  ├─────┼─────┼─────┤        │
-│  │ ░░░ │     │  O  │        │  <- ░ = dibujarHover()
-│  └─────┴─────┴─────┘        │
-│  El juego lo controla ...   │  <- dibujarAyuda()
-└─────────────────────────────┘
+┌───────────────────────────────────────────┐
+│                miniMAX                    │
+│        Tres en raya contra minimax        │
+│              ¿Quien empieza?              │
+│                                           │
+│  ┌─────────────────────────────────────┐  │
+│  │         Empiezo yo  (X)             │  │  <- boton()
+│  └─────────────────────────────────────┘  │
+│  ┌─────────────────────────────────────┐  │
+│  │      Empieza la maquina  (O)        │  │
+│  └─────────────────────────────────────┘  │
+│               Esc para salir              │
+└───────────────────────────────────────────┘
+```
+
+Partida en curso:
+
+```
+┌───────────────────────────────────────────┐
+│               Tu turno (X)                │  <- dibujarMensaje()
+│  ┌───────────┬───────────┬───────────┐    │
+│  │     X     │           │           │    │
+│  ├───────────┼───────────┼───────────┤    │
+│  │     O     │     X     │           │    │
+│  ├───────────┼───────────┼───────────┤    │
+│  │  ░░░░░░░  │           │     O     │    │  <- ░ = dibujarHover()
+│  └───────────┴───────────┴───────────┘    │
+│      Click para jugar   -   Esc para salir│  <- dibujarAyuda()
+└───────────────────────────────────────────┘
+```
+
+Fin de partida (el tablero queda oscurecido detrás):
+
+```
+┌───────────────────────────────────────────┐
+│  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓    │
+│  ▓▓▓┌───────────────────────────────┐▓▓▓    │
+│  ▓▓▓│           GANASTE             │▓▓▓    │  <- overlayResultado()
+│  ▓▓▓│ Presiona Enter para volver…   │▓▓▓    │
+│  ▓▓▓└───────────────────────────────┘▓▓▓    │
+└───────────────────────────────────────────┘
 ```
 
 ## 5. API del render
@@ -143,8 +177,28 @@ sin includes extra.
 | `dibujarTablero(t, L)` | cuadrícula + todas las fichas de `t` |
 | `dibujarHover(t, L)` | resalta en tenue la celda libre bajo el mouse |
 | `resaltarLinea(L, c0, c1, c2)` | trazo amarillo sobre las celdas `c0..c2` |
-| `dibujarMensaje(L, texto, color)` | texto grande en la franja superior |
-| `dibujarAyuda(L, texto)` | texto pequeño en la franja inferior |
+| `dibujarMensaje(L, texto, color)` | texto grande, centrado, en la franja superior |
+| `dibujarAyuda(L, texto)` | texto pequeño, centrado, en la franja inferior |
+| `dibujarTextoCentrado(texto, y, tam, color)` | texto centrado en la ventana, a la altura `y` |
+
+### Widgets
+
+| Función | Qué hace |
+|---|---|
+| `boton(rect, texto)` | dibuja un botón con hover y devuelve `true` si le dieron click |
+| `overlayResultado(L, titulo, color, subtitulo)` | oscurece el tablero y pinta el panel de resultado |
+
+`boton()` mezcla dibujo y click a propósito: se llama dentro del frame y su
+resultado se guarda para actuar después de `frameFin()`.
+
+```cpp
+bool empiezoYo = render::boton({ 180, 400, 460, 78 }, "Empiezo yo  (X)");
+// ... frameFin() ...
+if (empiezoYo) { /* empezar partida */ }
+```
+
+El título del panel se encoge solo si no cabe, así que `"GANÓ LA MÁQUINA"` entra
+igual que `"EMPATE"`.
 
 ### Entrada
 
@@ -166,18 +220,22 @@ if (fila >= 0) {
 ### Colores
 
 ```cpp
-render::COLOR_FONDO     // fondo de la ventana
-render::COLOR_X         // rojo de las X
-render::COLOR_O         // azul de las O
-render::COLOR_LINEA     // cuadrícula
-render::COLOR_TEXTO     // mensajes por defecto
-render::COLOR_VICTORIA  // amarillo de la línea ganadora
+render::COLOR_FONDO        // fondo de la ventana
+render::COLOR_X            // rojo de las X
+render::COLOR_O            // azul de las O
+render::COLOR_LINEA        // cuadrícula y textos secundarios
+render::COLOR_TEXTO        // mensajes por defecto
+render::COLOR_VICTORIA     // amarillo de la línea ganadora
+render::COLOR_BOTON        // relleno de los botones
+render::COLOR_BOTON_HOVER  // relleno del botón bajo el mouse
+render::COLOR_OVERLAY      // velo oscuro del panel de resultado
 ```
 
 ## 6. Cómo conectarlo a tu lógica
 
-El esqueleto es este. Los comentarios marcan **dónde va lo tuyo**; todo lo demás
-es una llamada al render.
+Contrato mínimo entre tu lógica y el render. Los comentarios marcan **dónde va lo
+tuyo**; todo lo demás es una llamada al render. El `main.cpp` real añade las tres
+pantallas explicadas más abajo.
 
 ```cpp
 #include "render.hpp"     // ya trae raylib.h y tablero.hpp
@@ -214,6 +272,23 @@ int main() {
 }
 ```
 
+### Las tres pantallas
+
+`main.cpp` es una máquina de estados con tres valores:
+
+```cpp
+enum class Pantalla { Inicio, Jugando, Fin };
+```
+
+- **Inicio**: dos `boton()`. Según el que pulses se resetea el tablero y se fija
+  `turnoHumano` (`true` = empiezas tú, `false` = empieza la máquina).
+- **Jugando**: si es turno humano y hay click, se marca `X`; si no, la máquina llama
+  a `mejorMovimiento()` y marca `O`. Al final se comprueba si la partida terminó.
+- **Fin**: `overlayResultado()` con el título del ganador; `Enter` vuelve a `Inicio`.
+
+Si se elige "empieza la máquina", `turnoHumano` arranca en `false`, así que la `O`
+entra antes del primer click.
+
 ### El único requisito sobre tu `Tablero`
 
 El render necesita leer las celdas. Para eso tu clase debe exponer:
@@ -245,16 +320,20 @@ Todo el layout sale de una sola estructura en `include/render.hpp`:
 
 ```cpp
 struct Layout {
-    int   margen = 40;      // espacio alrededor del tablero
-    int   lado   = 480;     // lado del tablero en px
-    float celda  = 160.0f;  // debe ser lado / 3
-    int   alto   = 600;     // alto total de la ventana
+    int   margen   = 60;      // margen lateral
+    int   yTablero = 120;     // altura donde empieza el tablero
+    int   lado     = 720;     // lado del tablero en px
+    float celda    = 240.0f;  // debe ser lado / 3
+    int   footer   = 80;      // franja inferior para dibujarAyuda()
+
+    int anchoVentana() const;  // margen * 2 + lado            -> 840
+    int altoVentana()  const;  // yTablero + lado + footer     -> 920
 };
 ```
 
-Cambiar `lado` y `alto` es suficiente; **si cambias `lado`, actualiza `celda` a
-`lado / 3`** para que la cuadrícula y el mouse sigan coincidiendo. El ancho de la
-ventana se calcula solo: `margen * 2 + lado`.
+Cambiar `lado` es suficiente; **si cambias `lado`, actualiza `celda` a `lado / 3`**
+para que la cuadrícula y el mouse sigan coincidiendo. `yTablero` te da espacio arriba
+para `dibujarMensaje()` y `footer` espacio abajo para `dibujarAyuda()`.
 
 Los colores son constantes en el mismo header. Cambiarlas ahí afecta a todo.
 

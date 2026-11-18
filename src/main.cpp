@@ -4,6 +4,12 @@
 
 namespace {
 
+enum class Pantalla {
+    Inicio,   // elegir quien empieza
+    Jugando,  // partida en curso
+    Fin       // resultado + Enter para reiniciar
+};
+
 bool tableroLleno(const Tablero& t) {
     for (int i = 0; i < Tablero::size; i++) {
         for (int j = 0; j < Tablero::size; j++) {
@@ -24,53 +30,113 @@ int main() {
     Layout L;
     render::iniciar(L, "miniMAX");
 
+    Pantalla pantalla = Pantalla::Inicio;
     Tablero tablero;
+    bool turnoHumano = true;
+    int resultado = 0;          // -10 gana X, +10 gana O, 0 empate
+
+    const float cx = L.anchoVentana() / 2.0f;
+    const Rectangle botonHumano  = { cx - 230.0f, 400.0f, 460.0f, 78.0f };
+    const Rectangle botonMaquina = { cx - 230.0f, 505.0f, 460.0f, 78.0f };
 
     while (!render::debeCerrar()) {
 
-        // ---- 1. TURNO DEL JUGADOR ----
-        if (!partidaTerminada(tablero) &&
-            IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        // ==================== PANTALLA DE INICIO ====================
+        if (pantalla == Pantalla::Inicio) {
+            render::frameInicio();
+                render::dibujarTextoCentrado("miniMAX", 170, 80, render::COLOR_TEXTO);
+                render::dibujarTextoCentrado("Tres en raya contra minimax", 275, 28,
+                                             render::COLOR_LINEA);
+                render::dibujarTextoCentrado("Quien empieza?", 335, 26,
+                                             render::COLOR_TEXTO);
 
-            auto [fila, col] = render::celdaDesdeMouse(L);
+                bool empiezoYo      = render::boton(botonHumano,  "Empiezo yo  (X)");
+                bool empiezaMaquina = render::boton(botonMaquina, "Empieza la maquina  (O)");
 
-            // marcarPunto devuelve 0 solo si la celda estaba libre.
-            // Si devuelve -1 (ocupada o fuera), no se juega el turno.
-            if (fila >= 0 && tablero.marcarPunto(fila, col, 'X') == 0) {
+                render::dibujarTextoCentrado("Esc para salir", L.altoVentana() - 70, 20,
+                                             render::COLOR_LINEA);
+            render::frameFin();
 
-                // ---- 2. TURNO DE LA MAQUINA ----
-                // Solo responde si la partida sigue en curso.
-                if (!partidaTerminada(tablero)) {
-                    auto [x, y] = mejorMovimiento(tablero.mapa);
-                    if (x >= 0) tablero.marcarPunto(x, y, 'O');
+            if (empiezoYo) {
+                tablero = Tablero();
+                turnoHumano = true;
+                resultado = 0;
+                pantalla = Pantalla::Jugando;
+            } else if (empiezaMaquina) {
+                tablero = Tablero();
+                turnoHumano = false;
+                resultado = 0;
+                pantalla = Pantalla::Jugando;
+            }
+
+            continue;
+        }
+
+        // ==================== PARTIDA ====================
+        if (pantalla == Pantalla::Jugando) {
+
+            // Turno del humano: solo avanza si la celda estaba libre.
+            if (turnoHumano && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                auto [fila, col] = render::celdaDesdeMouse(L);
+                if (fila >= 0 && tablero.marcarPunto(fila, col, 'X') == 0) {
+                    turnoHumano = false;
                 }
             }
+
+            // Turno de la maquina.
+            if (!turnoHumano && !partidaTerminada(tablero)) {
+                auto [x, y] = mejorMovimiento(tablero.mapa);
+                if (x >= 0) {
+                    tablero.marcarPunto(x, y, 'O');
+                    turnoHumano = true;
+                }
+            }
+
+            bool terminado = partidaTerminada(tablero);
+            if (terminado) {
+                resultado = eval(tablero.mapa);
+                pantalla = Pantalla::Fin;
+            }
+
+            render::frameInicio();
+                render::dibujarTablero(tablero, L);
+                if (!terminado) render::dibujarHover(tablero, L);
+
+                if (turnoHumano) {
+                    render::dibujarMensaje(L, "Tu turno (X)", render::COLOR_X);
+                } else {
+                    render::dibujarMensaje(L, "Turno de la maquina (O)", render::COLOR_O);
+                }
+                render::dibujarAyuda(L, "Click para jugar   -   Esc para salir");
+            render::frameFin();
+
+            continue;
         }
 
-        // ---- 3. MENSAJE DE ESTADO ----
-        int resultado = eval(tablero.mapa);
-        bool terminado = (resultado != 0) || tableroLleno(tablero);
-
-        const char* mensaje = "Tu turno (X)";
-        Color color = render::COLOR_TEXTO;
+        // ==================== FIN DE PARTIDA ====================
+        const char* titulo = "EMPATE";
+        Color color = render::COLOR_LINEA;
 
         if (resultado < 0) {
-            mensaje = "Ganaste!";
+            titulo = "GANASTE";
             color = render::COLOR_X;
         } else if (resultado > 0) {
-            mensaje = "Gana la maquina";
+            titulo = "GANO LA MAQUINA";
             color = render::COLOR_O;
-        } else if (terminado) {
-            mensaje = "Empate";
-            color = render::COLOR_LINEA;
         }
 
-        // ---- 4. DIBUJO ----
+        if (IsKeyPressed(KEY_ENTER)) {
+            tablero = Tablero();
+            turnoHumano = true;
+            resultado = 0;
+            pantalla = Pantalla::Inicio;
+            continue;
+        }
+
         render::frameInicio();
             render::dibujarTablero(tablero, L);
-            if (!terminado) render::dibujarHover(tablero, L);
-            render::dibujarMensaje(L, mensaje, color);
-            render::dibujarAyuda(L, "Click para jugar   -   Esc para salir");
+            render::overlayResultado(L, titulo, color,
+                                     "Presiona Enter para volver a jugar");
         render::frameFin();
     }
 
