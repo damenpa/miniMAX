@@ -150,10 +150,18 @@ sin includes extra.
 
 | Función | Qué hace |
 |---|---|
-| `celdaDesdeMouse(L)` | celda bajo el mouse como `0..8`, o `-1` si está fuera |
+| `celdaDesdeMouse(L)` | devuelve `{fila, col}` de tu matriz |
 
-El índice `0..8` es plano: **`pos / 3` es la fila y `pos % 3` la columna**, o sea
-lo mismo que `fila * 3 + col`. Encaja directo con `Tablero::marcarPunto(fila, col, ...)`.
+Devuelve un `std::pair<int, int>` con las coordenadas directas de `mapa[fila][col]`,
+así que entra tal cual en `Tablero::marcarPunto(fila, col, ...)`. Si el puntero está
+fuera del tablero devuelve `{-1, -1}`:
+
+```cpp
+auto [fila, col] = render::celdaDesdeMouse(L);
+if (fila >= 0) {
+    tablero.marcarPunto(fila, col, 'X');
+}
+```
 
 ### Colores
 
@@ -184,8 +192,9 @@ int main() {
     while (!render::debeCerrar()) {
         // ---- 1. ENTRADA (tuya) ----
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            int pos = render::celdaDesdeMouse(L);
-            if (pos >= 0) {
+            auto [fila, col] = render::celdaDesdeMouse(L);
+            if (fila >= 0) {
+                // fila y col son las coordenadas de tu matriz
                 // tu lógica: validar turno, marcar, llamar a minimax...
             }
         }

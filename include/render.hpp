@@ -2,6 +2,8 @@
 #include "raylib.h"
 #include "tablero.hpp"
 
+#include <utility>
+
 // Geometria de la ventana. Todo el dibujo sale de aqui, asi que cambiar
 // el tamano es tocar solo esta estructura.
 struct Layout {
@@ -62,8 +64,8 @@ void dibujarAyuda(const Layout& L, const char* texto);
 // Entrada
 // ---------------------------------------------------------------------------
 
-// Celda bajo el mouse como indice plano 0..8, o -1 si el puntero esta
-// fuera del tablero.
-int celdaDesdeMouse(const Layout& L);
+// Celda bajo el mouse, ya en coordenadas de la matriz del Tablero:
+// {fila, col}. Si el puntero esta fuera del tablero devuelve {-1, -1}.
+std::pair<int, int> celdaDesdeMouse(const Layout& L);
 
 } // namespace render

@@ -84,12 +84,10 @@ void render::dibujarTablero(const Tablero& t, const Layout& L) {
 }
 
 void render::dibujarHover(const Tablero& t, const Layout& L) {
-    int pos = celdaDesdeMouse(L);
-    if (pos < 0) return;
-    if (t.en(pos / N, pos % N) != ' ') return;
+    auto [fila, col] = celdaDesdeMouse(L);
+    if (fila < 0 || col < 0) return;
+    if (t.en(fila, col) != ' ') return;
 
-    int fila = pos / N;
-    int col  = pos % N;
     DrawRectangle(static_cast<int>(L.margen + col * L.celda),
                   static_cast<int>(L.margen + fila * L.celda),
                   static_cast<int>(L.celda),
@@ -133,13 +131,13 @@ void render::dibujarAyuda(const Layout& L, const char* texto) {
 // Entrada
 // ---------------------------------------------------------------------------
 
-int render::celdaDesdeMouse(const Layout& L) {
+std::pair<int, int> render::celdaDesdeMouse(const Layout& L) {
     Vector2 m = GetMousePosition();
 
-    if (m.x < L.margen || m.y < L.margen) return -1;
-    if (m.x >= L.margen + L.lado || m.y >= L.margen + L.lado) return -1;
+    if (m.x < L.margen || m.y < L.margen) return { -1, -1 };
+    if (m.x >= L.margen + L.lado || m.y >= L.margen + L.lado) return { -1, -1 };
 
     int col  = static_cast<int>((m.x - L.margen) / L.celda);
     int fila = static_cast<int>((m.y - L.margen) / L.celda);
-    return fila * N + col;
+    return { fila, col };
 }
