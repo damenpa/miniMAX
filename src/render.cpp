@@ -1,22 +1,21 @@
 #include "render.hpp"
 
 #include <cmath>
-
-namespace {
+#include <cstdio>
 
 // El tablero del juego es 3x3 (Tablero::size).
-constexpr int N = 3;
+static constexpr int N = 3;
 
-constexpr Color COLOR_HOVER = { 255, 255, 255, 28 };
+static constexpr Color COLOR_HOVER = { 255, 255, 255, 28 };
 
 // Fuente unica para toda la interfaz. Se carga una sola vez en iniciar().
-Font fuente;
-bool fuentePropia = false;
+static Font fuente;
+static bool fuentePropia = false;
 
-constexpr float ESPACIADO = 0.0f;
+static constexpr float ESPACIADO = 0.0f;
 
 // Primer .ttf del sistema que exista. Si no hay ninguno se usa la de raylib.
-void cargarFuente() {
+static void cargarFuente() {
     const char* candidatas[] = {
         "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
@@ -38,32 +37,36 @@ void cargarFuente() {
     fuente = GetFontDefault(); // plan B: la fuente de pixeles de raylib
 }
 
-Vector2 medir(const char* texto, float tam) {
+static Vector2 medir(const char* texto, float tam) {
     return MeasureTextEx(fuente, texto, tam, ESPACIADO);
 }
 
-void escribir(const char* texto, float x, float y, float tam, Color color) {
+static void escribir(const char* texto, float x, float y, float tam, Color color) {
     DrawTextEx(fuente, texto, { x, y }, tam, ESPACIADO, color);
 }
 
-void dibujarX(float cx, float cy, float r) {
+static void dibujarX(float cx, float cy, float r) {
     DrawLineEx({ cx - r, cy - r }, { cx + r, cy + r }, 12.0f, render::COLOR_X);
     DrawLineEx({ cx - r, cy + r }, { cx + r, cy - r }, 12.0f, render::COLOR_X);
 }
 
-void dibujarO(float cx, float cy, float r) {
+static void dibujarO(float cx, float cy, float r) {
     DrawRing({ cx, cy }, r - 7.0f, r + 7.0f, 0.0f, 360.0f, 56, render::COLOR_O);
 }
 
 // Centro en pixeles de la celda con indice plano 0..8.
-Vector2 centroDeCelda(int pos, const Layout& L) {
+static Vector2 centroDeCelda(int pos, const Layout& L) {
     int fila = pos / N;
     int col  = pos % N;
     return { L.margen + col * L.celda + L.celda / 2.0f,
              L.yTablero + fila * L.celda + L.celda / 2.0f };
 }
 
-} // namespace
+static const char* nombreDificultad(int dificultad) {
+    if (dificultad == 1) return "Facil";
+    if (dificultad == 2) return "Medio";
+    return "Dificil";
+}
 
 // ---------------------------------------------------------------------------
 // Ventana
@@ -91,6 +94,88 @@ void render::frameInicio() {
 
 void render::frameFin() {
     EndDrawing();
+}
+
+// ---------------------------------------------------------------------------
+// Pantallas
+// ---------------------------------------------------------------------------
+
+render::AccionInicio render::pantallaInicio(const Layout& L, int dificultadActual) {
+    const float cx = L.anchoVentana() / 2.0f;
+
+    constexpr float anchoDif = 200.0f;
+    constexpr float altoDif  = 70.0f;
+    constexpr float hueco     = 20.0f;
+    const float xDif = cx - (3 * anchoDif + 2 * hueco) / 2.0f;
+
+    constexpr float anchoInicio = 460.0f;
+    constexpr float altoInicio  = 76.0f;
+
+    frameInicio();
+        dibujarTextoCentrado("GATO", 120, 96, COLOR_TEXTO);
+
+        dibujarTextoCentrado("Dificultad", 332, 24, COLOR_LINEA);
+        bool facil   = boton({ xDif, 372, anchoDif, altoDif }, "Facil", dificultadActual == 1);
+        bool medio   = boton({ xDif + anchoDif + hueco, 372, anchoDif, altoDif },
+                             "Medio", dificultadActual == 2);
+        bool dificil = boton({ xDif + 2 * (anchoDif + hueco), 372, anchoDif, altoDif },
+                             "Dificil", dificultadActual == 3);
+
+        dibujarTextoCentrado("Quien empieza?", 500, 24, COLOR_LINEA);
+        bool humano  = boton({ cx - anchoInicio / 2.0f, 548, anchoInicio, altoInicio },
+                             "Empiezo yo  (X)");
+        bool maquina = boton({ cx - anchoInicio / 2.0f, 640, anchoInicio, altoInicio },
+                             "Empieza la maquina  (O)");
+
+        dibujarTextoCentrado("Esc para salir", L.altoVentana() - 60, 20, COLOR_LINEA);
+    frameFin();
+
+    AccionInicio accion;
+    if (facil)        accion.dificultad = 1;
+    else if (medio)   accion.dificultad = 2;
+    else if (dificil) accion.dificultad = 3;
+
+    accion.empezoHumano  = humano;
+    accion.empezoMaquina = maquina;
+    return accion;
+}
+
+void render::pantallaJuego(const Layout& L, const Tablero& t, bool turnoHumano,
+                           int dificultad) {
+    char ayuda[80];
+    std::snprintf(ayuda, sizeof ayuda, "Dificultad: %s   -   Esc para salir",
+                  nombreDificultad(dificultad));
+
+    frameInicio();
+        dibujarTablero(t, L);
+        if (!t.terminado()) dibujarHover(t, L);
+
+        if (turnoHumano) dibujarMensaje(L, "Tu turno (X)", COLOR_X);
+        else             dibujarMensaje(L, "Turno de la maquina (O)", COLOR_O);
+
+        dibujarAyuda(L, ayuda);
+    frameFin();
+}
+
+void render::pantallaFin(const Layout& L, const Tablero& t) {
+    // En este juego el humano siempre es 'X' y la maquina 'O'.
+    char ganador = t.ganador();
+
+    const char* titulo = "EMPATE";
+    Color color = COLOR_LINEA;
+
+    if (ganador == 'X') {
+        titulo = "GANASTE";
+        color = COLOR_X;
+    } else if (ganador == 'O') {
+        titulo = "GANO LA MAQUINA";
+        color = COLOR_O;
+    }
+
+    frameInicio();
+        dibujarTablero(t, L);
+        overlayResultado(L, titulo, color, "Presiona Enter para volver a jugar");
+    frameFin();
 }
 
 // ---------------------------------------------------------------------------

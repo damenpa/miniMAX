@@ -9,7 +9,7 @@
 struct Layout {
     int   margen   = 60;      // margen lateral
     int   yTablero = 120;     // donde empieza el tablero (arriba)
-    int   lado     = 720;      // lado del tablero en pixeles
+    int   lado     = 720;     // lado del tablero en pixeles
     float celda    = 240.0f;  // debe valer lado / 3
     int   footer   = 80;      // franja inferior
 
@@ -44,28 +44,35 @@ void frameInicio();
 void frameFin();
 
 // ---------------------------------------------------------------------------
-// Dibujo del tablero (solo lee el Tablero, nunca lo modifica)
+// Pantallas: lo unico que main necesita para dibujar
+// ---------------------------------------------------------------------------
+
+// Lo que eligio el usuario en la pantalla de inicio.
+struct AccionInicio {
+    bool empezoHumano  = false;  // pulso "Empiezo yo (X)"
+    bool empezoMaquina = false;  // pulso "Empieza la maquina (O)"
+    int  dificultad    = 0;      // 0 = no cambio la dificultad
+};
+
+// Dibuja la pantalla de inicio y devuelve lo que se pulso.
+AccionInicio pantallaInicio(const Layout& L, int dificultadActual);
+
+// Dibuja la partida en curso: tablero, turno y dificultad.
+void pantallaJuego(const Layout& L, const Tablero& t, bool turnoHumano, int dificultad);
+
+// Dibuja el tablero final con el cartel del resultado.
+void pantallaFin(const Layout& L, const Tablero& t);
+
+// ---------------------------------------------------------------------------
+// Piezas de dibujo (para armar pantallas propias)
 // ---------------------------------------------------------------------------
 void dibujarTablero(const Tablero& t, const Layout& L);
 void dibujarHover(const Tablero& t, const Layout& L);
 void resaltarLinea(const Layout& L, int c0, int c1, int c2);
 
-// ---------------------------------------------------------------------------
-// Texto
-// ---------------------------------------------------------------------------
-
-// Texto de estado, centrado, en la franja superior de la ventana.
 void dibujarMensaje(const Layout& L, const char* texto, Color color);
-
-// Texto de ayuda, centrado, en la franja inferior.
 void dibujarAyuda(const Layout& L, const char* texto);
-
-// Texto centrado horizontalmente en la ventana, en la altura y tamano dados.
 void dibujarTextoCentrado(const char* texto, int y, int tam, Color color);
-
-// ---------------------------------------------------------------------------
-// Widgets
-// ---------------------------------------------------------------------------
 
 // Dibuja un boton con hover. `activo` lo pinta como seleccionado.
 // Devuelve true si el usuario le dio click.

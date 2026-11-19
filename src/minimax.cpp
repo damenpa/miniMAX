@@ -5,19 +5,17 @@
 #include <random>
 #include <utility>
 
-namespace {
-
 // Probabilidad (en %) de jugar una celda libre al azar en vez de la mejor jugada.
 // Subir estos numeros hace al nivel mas flojo; 0 = nunca falla.
-constexpr int AZAR_FACIL = 55;
-constexpr int AZAR_MEDIO = 20;
+static constexpr int AZAR_FACIL = 55;
+static constexpr int AZAR_MEDIO = 18;
 
-std::mt19937 &dado() {
+static std::mt19937 &dado() {
     static std::mt19937 motor(std::random_device{}());
     return motor;
 }
 
-bool lleno(const std::array<std::array<char,3>,3> &tablero) {
+static bool lleno(const std::array<std::array<char,3>,3> &tablero) {
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             if (tablero[i][j] == ' ') return false;
@@ -26,7 +24,7 @@ bool lleno(const std::array<std::array<char,3>,3> &tablero) {
     return true;
 }
 
-int puntuarLinea(char c1, char c2, char c3) {
+static int puntuarLinea(char c1, char c2, char c3) {
     int fichasIA = (c1 == 'O') + (c2 == 'O') + (c3 == 'O');
     int fichasHumano = (c1 == 'X') + (c2 == 'X') + (c3 == 'X');
 
@@ -41,7 +39,7 @@ int puntuarLinea(char c1, char c2, char c3) {
     return 0;
 }
 
-int evalHeuristica(const std::array<std::array<char,3>,3> &tablero) {
+static int evalHeuristica(const std::array<std::array<char,3>,3> &tablero) {
     int puntaje = 0;
 
     for (int i = 0; i < 3; i++) {
@@ -57,8 +55,6 @@ int evalHeuristica(const std::array<std::array<char,3>,3> &tablero) {
 
     return puntaje;
 }
-
-} // namespace
 
 int eval(const std::array<std::array<char,3>,3> &tablero) {
     for (int i = 0; i < 3; i++) {
