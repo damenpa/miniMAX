@@ -30,6 +30,7 @@ inline constexpr Color COLOR_TEXTO       = { 235, 235, 245, 255 };
 inline constexpr Color COLOR_VICTORIA    = { 250, 210, 90, 255 };
 inline constexpr Color COLOR_BOTON       = { 44, 46, 62, 255 };
 inline constexpr Color COLOR_BOTON_HOVER = { 72, 78, 108, 255 };
+inline constexpr Color COLOR_BOTON_ACTIVO = { 250, 210, 90, 255 };
 inline constexpr Color COLOR_OVERLAY     = { 14, 14, 22, 230 };
 
 // ---------------------------------------------------------------------------
@@ -66,8 +67,9 @@ void dibujarTextoCentrado(const char* texto, int y, int tam, Color color);
 // Widgets
 // ---------------------------------------------------------------------------
 
-// Dibuja un boton con hover. Devuelve true si el usuario le dio click.
-bool boton(Rectangle r, const char* texto);
+// Dibuja un boton con hover. `activo` lo pinta como seleccionado.
+// Devuelve true si el usuario le dio click.
+bool boton(Rectangle r, const char* texto, bool activo = false);
 
 // Oscurece el tablero y muestra el resultado en grande.
 void overlayResultado(const Layout& L, const char* titulo, Color color,

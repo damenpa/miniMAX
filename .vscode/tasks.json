@@ -18,14 +18,14 @@
             "detail": "Compila el proyecto con el makefile (src/*.cpp -> build/miniMAX)"
         },
         {
-            "label": "make demo",
+            "label": "make run",
             "type": "shell",
-            "command": "make demo",
+            "command": "make run",
             "options": {
                 "cwd": "${workspaceFolder}"
             },
             "problemMatcher": [],
-            "detail": "Compila la demo de la capa de render (examples/demo_render.cpp)"
+            "detail": "Compila y ejecuta el juego"
         },
         {
             "label": "make clean",

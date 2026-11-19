@@ -15,26 +15,26 @@ case "$(uname -m)" in
     *) echo "Arquitectura no soportada: $(uname -m)" >&2; exit 1 ;;
 esac
 
-if [ -f "vendor/raylib/include/raylib.h" ]; then
-    echo "[=] raylib ya esta en vendor/raylib"
+if [ -f "lib/raylib/include/raylib.h" ]; then
+    echo "[=] raylib ya esta en lib/raylib"
 else
     echo "[+] Descargando raylib ${VERSION} (${ASSET})..."
-    mkdir -p vendor
+    mkdir -p lib
     tmp="$(mktemp -d)"
     curl -fL --progress-bar -o "$tmp/raylib.tar.gz" \
         "https://github.com/raysan5/raylib/releases/download/${VERSION}/${ASSET}"
     tar xzf "$tmp/raylib.tar.gz" -C "$tmp"
-    mv "$tmp/${ASSET%.tar.gz}" "vendor/raylib"
+    mv "$tmp/${ASSET%.tar.gz}" "lib/raylib"
     rm -rf "$tmp"
-    echo "[=] raylib instalada en vendor/raylib"
+    echo "[=] raylib instalada en lib/raylib"
 fi
 
 # Algunas distros solo traen libGL.so.1 / libX11.so.6 (runtime) sin los
-# enlaces .so que necesita el linker. Creamos stubs locales en vendor/lib.
+# enlaces .so que necesita el linker. Creamos stubs locales en lib/.
 echo "[+] Preparando enlaces de libGL / X11..."
-mkdir -p vendor/lib
+mkdir -p lib
 for name in GL X11 Xrandr Xinerama Xcursor Xi; do
-    target="vendor/lib/lib${name}.so"
+    target="lib/lib${name}.so"
     [ -e "$target" ] && continue
 
     src="$(ls /usr/lib/*/lib${name}.so.? 2>/dev/null | head -1 || true)"
@@ -49,4 +49,3 @@ done
 echo
 echo "[ok] Listo. Ahora:"
 echo "     make run     # compilar y jugar"
-echo "     make test    # verificar el motor de IA"

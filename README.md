@@ -1,4 +1,4 @@
-# miniMAX — capa de render
+# GATO — tres en raya con minimax
 
 Interfaz gráfica en [raylib](https://www.raylib.com/) para un tres en raya (gato) en C++17.
 
@@ -12,7 +12,7 @@ El juego tiene tres pantallas: **inicio** (eliges quién empieza), **partida** y
 1. [Qué incluye y qué no](#1-qué-incluye-y-qué-no)
 2. [Requisitos](#2-requisitos)
 3. [Instalación](#3-instalación)
-4. [Compilar y ver la demo](#4-compilar-y-ver-la-demo)
+4. [Compilar y jugar](#4-compilar-y-jugar)
 5. [API del render](#5-api-del-render)
 6. [Cómo conectarlo a tu lógica](#6-cómo-conectarlo-a-tu-lógica)
 7. [Ajustar el tamaño y los colores](#7-ajustar-el-tamaño-y-los-colores)
@@ -72,52 +72,56 @@ paso siguiente (no hace falta `cmake` ni compilar nada).
 
 El script hace dos cosas:
 
-**a) Descarga raylib 6.2 precompilada** (~2 MB, según tu arquitectura) en `vendor/`:
+**a) Descarga raylib 6.2 precompilada** (~2 MB, según tu arquitectura) en `lib/`:
 
 ```bash
-mkdir -p vendor && cd vendor
+mkdir -p lib && cd lib
 curl -L -o raylib.tar.gz \
   https://github.com/raysan5/raylib/releases/download/6.2/raylib-6.2_linux_amd64.tar.gz
 tar xzf raylib.tar.gz && mv raylib-6.2_linux_amd64 raylib && rm raylib.tar.gz
 ```
 
-Debes terminar con `vendor/raylib/include/raylib.h` y `vendor/raylib/lib/libraylib.a`.
+Debes terminar con `lib/raylib/include/raylib.h` y `lib/raylib/lib/libraylib.a`.
 En ARM usa `raylib-6.2_linux_arm64.tar.gz`; en 32 bits, `..._linux_i386.tar.gz`.
 
-**b) Crea enlaces de `libGL` / X11** en `vendor/lib/`, solo si tu distro trae las
+**b) Crea enlaces de `libGL` / X11** en `lib/`, solo si tu distro trae las
 librerías de ejecución (`libGL.so.1`) sin los enlaces `libGL.so` que necesita el
 linker. Si ya instalaste los paquetes `-dev` del punto 2, este paso no hace nada.
 
-## 4. Compilar y ver la demo
+## 4. Compilar y jugar
 
 ```bash
-make demo && ./build/miniMAX-demo
+make run
 ```
 
-Abre la ventana con un tablero de ejemplo para que veas colores, hover y tipografías.
-`Esc` la cierra. **La demo no juega**: solo dibuja.
+Abre la ventana en la pantalla de inicio, donde eliges **dificultad** y **quién
+empieza**. `Esc` cierra el juego.
 
 | Comando | Qué hace |
 |---|---|
-| `make` | compila **tu** `src/main.cpp` en `build/miniMAX` |
-| `make run` | ejecuta `build/miniMAX` |
-| `make demo` | compila `examples/demo_render.cpp` en `build/miniMAX-demo` |
+| `make` | compila `src/*.cpp` en `build/miniMAX` |
+| `make run` | compila y ejecuta `build/miniMAX` |
 | `make debug` | `build/miniMAX-debug` sin optimizar (`-O0 -g`), para `gdb` |
 | `make clean` | borra `build/` |
 
-> `src/main.cpp` ya trae el juego completo: pantalla de inicio, turnos, máquina con
+> `src/main.cpp` trae el juego completo: pantalla de inicio, turnos, máquina con
 > minimax y pantalla de resultado. Es tu archivo, así que puedes reescribirlo.
 
 Ventana resultante (**840×920**). Pantalla de inicio:
 
 ```
 ┌───────────────────────────────────────────┐
-│                miniMAX                    │
+│                  GATO                     │
 │        Tres en raya contra minimax        │
-│              ¿Quien empieza?              │
 │                                           │
+│                Dificultad                 │
+│   ┌────────┐ ┌────────┐ ┌────────┐        │  <- boton(..., activo)
+│   │ Facil  │ │ Medio  │ │Dificil │        │
+│   └────────┘ └────────┘ └────────┘        │
+│                                           │
+│             Quien empieza?                │
 │  ┌─────────────────────────────────────┐  │
-│  │         Empiezo yo  (X)             │  │  <- boton()
+│  │         Empiezo yo  (X)             │  │
 │  └─────────────────────────────────────┘  │
 │  ┌─────────────────────────────────────┐  │
 │  │      Empieza la maquina  (O)        │  │
@@ -164,11 +168,15 @@ sin includes extra.
 
 | Función | Qué hace |
 |---|---|
-| `iniciar(const Layout&, const char* titulo)` | abre la ventana y fija 60 FPS |
+| `iniciar(const Layout&, const char* titulo)` | abre la ventana, fija 60 FPS y carga la fuente |
 | `debeCerrar()` | `true` si cierran la ventana o pulsan `Esc` |
 | `frameInicio()` | `BeginDrawing()` + limpia el fondo |
 | `frameFin()` | `EndDrawing()` (volcado y swap de buffers) |
 | `cerrar()` | `CloseWindow()` |
+
+La tipografía es una sans-serif del sistema (`Ubuntu`, `Liberation Sans`, `DejaVu
+Sans` o `Noto Sans`, la primera que exista). Si no encuentra ninguna usa la fuente
+de píxeles de raylib, así que el juego nunca se queda sin texto.
 
 ### Dibujo
 
@@ -185,16 +193,16 @@ sin includes extra.
 
 | Función | Qué hace |
 |---|---|
-| `boton(rect, texto)` | dibuja un botón con hover y devuelve `true` si le dieron click |
+| `boton(rect, texto, activo = false)` | dibuja un botón con hover, lo pinta como seleccionado si `activo`, y devuelve `true` si le dieron click |
 | `overlayResultado(L, titulo, color, subtitulo)` | oscurece el tablero y pinta el panel de resultado |
 
 `boton()` mezcla dibujo y click a propósito: se llama dentro del frame y su
 resultado se guarda para actuar después de `frameFin()`.
 
 ```cpp
-bool empiezoYo = render::boton({ 180, 400, 460, 78 }, "Empiezo yo  (X)");
+bool medio = render::boton({ 320, 372, 200, 70 }, "Medio", dificultad == 2);
 // ... frameFin() ...
-if (empiezoYo) { /* empezar partida */ }
+if (medio) dificultad = 2;
 ```
 
 El título del panel se encoge solo si no cabe, así que `"GANÓ LA MÁQUINA"` entra
@@ -228,6 +236,7 @@ render::COLOR_TEXTO        // mensajes por defecto
 render::COLOR_VICTORIA     // amarillo de la línea ganadora
 render::COLOR_BOTON        // relleno de los botones
 render::COLOR_BOTON_HOVER  // relleno del botón bajo el mouse
+render::COLOR_BOTON_ACTIVO // relleno del botón seleccionado (amarillo)
 render::COLOR_OVERLAY      // velo oscuro del panel de resultado
 ```
 
@@ -242,7 +251,7 @@ pantallas explicadas más abajo.
 
 int main() {
     Layout L;
-    render::iniciar(L, "miniMAX");
+    render::iniciar(L, "GATO");
 
     Tablero tablero;
     // ... tu estado: turno, partida terminada, etc.
@@ -280,14 +289,51 @@ int main() {
 enum class Pantalla { Inicio, Jugando, Fin };
 ```
 
-- **Inicio**: dos `boton()`. Según el que pulses se resetea el tablero y se fija
+- **Inicio**: los tres `boton()` de dificultad (el elegido se pinta con `activo`) y
+  los dos de quién empieza. Al pulsar uno de inicio se resetea el tablero y se fija
   `turnoHumano` (`true` = empiezas tú, `false` = empieza la máquina).
 - **Jugando**: si es turno humano y hay click, se marca `X`; si no, la máquina llama
-  a `mejorMovimiento()` y marca `O`. Al final se comprueba si la partida terminó.
-- **Fin**: `overlayResultado()` con el título del ganador; `Enter` vuelve a `Inicio`.
+  a `mejorMovimiento(tablero.mapa, dificultad)` y marca `O`. Al final se comprueba si
+  la partida terminó.
+- **Fin**: `overlayResultado()` con el título del ganador; `Enter` vuelve a `Inicio`
+  (la dificultad elegida se conserva).
 
 Si se elige "empieza la máquina", `turnoHumano` arranca en `false`, así que la `O`
 entra antes del primer click.
+
+### Niveles de dificultad
+
+`mejorMovimiento()` recibe la dificultad y la traduce a una profundidad máxima y a
+una probabilidad de jugar al azar:
+
+| Nivel | `dificultad` | `maxProfundidad` | Azar | Qué hace |
+|---|---|---|---|---|
+| Fácil | 1 | 1 | 55% | solo heurística, y más de la mitad de las veces juega al azar |
+| Medio | 2 | 2 | 20% | mira una jugada tuya por delante |
+| Difícil | 3 | 9 | 0% | minimax completo: no pierde nunca |
+
+La heurística (`evalHeuristica`) puntúa cada fila, columna y diagonal: `+3` por dos
+fichas propias, `-3` por dos rivales, `±1` con una sola ficha y `0` si la línea está
+bloqueada. Además suma `+1` si la máquina controla el centro. Los estados de victoria
+siguen valiendo `±100`, muy por encima de cualquier heurística, así que la máquina
+siempre remata y bloquea las jugadas inmediatas.
+
+El azar es lo que hace que los niveles flojos se puedan ganar: cuando toca jugada
+aleatoria, la máquina puede dejar pasar un bloqueo o un remate. Los dos números se
+ajustan arriba de todo en `src/minimax.cpp`:
+
+```cpp
+constexpr int AZAR_FACIL = 55;   // 0 = nunca falla, 100 = siempre al azar
+constexpr int AZAR_MEDIO = 20;
+```
+
+Medido sobre 400 partidas por nivel:
+
+| Nivel | Gana el humano (principiante) | Gana el humano (X perfecto) |
+|---|---|---|
+| Fácil | 50% | 84% |
+| Medio | 18% | 42% |
+| Difícil | 0% | 0% |
 
 ### El único requisito sobre tu `Tablero`
 
@@ -343,16 +389,16 @@ Los colores son constantes en el mismo header. Cambiarlas ahí afecta a todo.
 miniMAX/
 ├── include/
 │   ├── render.hpp          # API pública del render
+│   ├── minimax.hpp         # eval / minimax / mejorMovimiento
 │   └── tablero.hpp         # TU tablero (+ el getter en())
 ├── src/
 │   ├── render.cpp          # implementación con raylib
+│   ├── minimax.cpp         # TU minimax + heurística por niveles
 │   ├── tablero.cpp         # TU lógica
 │   └── main.cpp            # TU bucle de juego
-├── examples/
-│   └── demo_render.cpp     # demo que no toca tu main
 ├── scripts/
 │   └── setup.sh            # descarga raylib
-├── vendor/                 # raylib + symlinks (no se versiona)
+├── lib/                    # raylib + symlinks (no se versiona)
 ├── build/                  # binarios (no se versiona)
 └── makefile
 ```
@@ -376,7 +422,8 @@ ventana y no depende del render.
 | `fatal error: raylib.h: No such file` | No descargaste raylib | `./scripts/setup.sh` |
 | `error: GLFW: Failed to initialize Window` | Sin servidor gráfico (SSH, contenedor) | Necesitas un `DISPLAY` real |
 | La ventana se ve negra o crashea | Driver GL problemático | `LIBGL_ALWAYS_SOFTWARE=1 make run` |
-| Bajo Wayland no aparece la ventana | raylib precompilada usa backend X11 | `env -u WAYLAND_DISPLAY make demo` (fuerza XWayland) |
+| Bajo Wayland no aparece la ventana | raylib precompilada usa backend X11 | `env -u WAYLAND_DISPLAY make run` (fuerza XWayland) |
+| El texto sale con la fuente de píxeles | No hay ninguna sans-serif del sistema | Instala `fonts-dejavu` o `fonts-liberation` |
 | Los clicks caen en otra celda | Escalado HiDPI | Ajusta `Layout::celda` o añade `SetWindowState(FLAG_WINDOW_HIGHDPI)` en `main` |
 | `'X'` y `'O'` no aparecen | `Tablero::en()` devuelve otra cosa | Verifica que devuelve `' ', 'X'` o `'O'` |
 
@@ -390,4 +437,4 @@ echo $DISPLAY     # no debe estar vacío
 ---
 
 **Licencia**: uso libre. raylib se distribuye bajo zlib/libpng (ver
-`vendor/raylib/LICENSE`).
+`lib/raylib/LICENSE`).

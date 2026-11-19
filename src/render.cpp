@@ -9,6 +9,43 @@ constexpr int N = 3;
 
 constexpr Color COLOR_HOVER = { 255, 255, 255, 28 };
 
+// Fuente unica para toda la interfaz. Se carga una sola vez en iniciar().
+Font fuente;
+bool fuentePropia = false;
+
+constexpr float ESPACIADO = 0.0f;
+
+// Primer .ttf del sistema que exista. Si no hay ninguno se usa la de raylib.
+void cargarFuente() {
+    const char* candidatas[] = {
+        "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+    };
+
+    for (const char* ruta : candidatas) {
+        if (!FileExists(ruta)) continue;
+
+        fuente = LoadFontEx(ruta, 96, nullptr, 0);
+        if (fuente.texture.id != 0 && fuente.glyphCount > 0) {
+            SetTextureFilter(fuente.texture, TEXTURE_FILTER_BILINEAR);
+            fuentePropia = true;
+            return;
+        }
+    }
+
+    fuente = GetFontDefault(); // plan B: la fuente de pixeles de raylib
+}
+
+Vector2 medir(const char* texto, float tam) {
+    return MeasureTextEx(fuente, texto, tam, ESPACIADO);
+}
+
+void escribir(const char* texto, float x, float y, float tam, Color color) {
+    DrawTextEx(fuente, texto, { x, y }, tam, ESPACIADO, color);
+}
+
 void dibujarX(float cx, float cy, float r) {
     DrawLineEx({ cx - r, cy - r }, { cx + r, cy + r }, 12.0f, render::COLOR_X);
     DrawLineEx({ cx - r, cy + r }, { cx + r, cy - r }, 12.0f, render::COLOR_X);
@@ -35,9 +72,11 @@ Vector2 centroDeCelda(int pos, const Layout& L) {
 void render::iniciar(const Layout& L, const char* titulo) {
     InitWindow(L.anchoVentana(), L.altoVentana(), titulo);
     SetTargetFPS(60);
+    cargarFuente();
 }
 
 void render::cerrar() {
+    if (fuentePropia) UnloadFont(fuente);
     CloseWindow();
 }
 
@@ -123,34 +162,41 @@ void render::resaltarLinea(const Layout& L, int c0, int c1, int c2) {
 
 void render::dibujarMensaje(const Layout& L, const char* texto, Color color) {
     (void)L;
-    dibujarTextoCentrado(texto, 40, 36, color);
+    dibujarTextoCentrado(texto, 40, 34, color);
 }
 
 void render::dibujarAyuda(const Layout& L, const char* texto) {
-    dibujarTextoCentrado(texto, L.yTablero + L.lado + 26, 22, COLOR_LINEA);
+    dibujarTextoCentrado(texto, L.yTablero + L.lado + 28, 20, COLOR_LINEA);
 }
 
 void render::dibujarTextoCentrado(const char* texto, int y, int tam, Color color) {
-    int ancho = MeasureText(texto, tam);
-    DrawText(texto, (GetScreenWidth() - ancho) / 2, y, tam, color);
+    float medida = medir(texto, static_cast<float>(tam)).x;
+    escribir(texto, (GetScreenWidth() - medida) / 2.0f, static_cast<float>(y),
+             static_cast<float>(tam), color);
 }
 
 // ---------------------------------------------------------------------------
 // Widgets
 // ---------------------------------------------------------------------------
 
-bool render::boton(Rectangle r, const char* texto) {
+bool render::boton(Rectangle r, const char* texto, bool activo) {
     bool hover = CheckCollisionPointRec(GetMousePosition(), r);
 
-    DrawRectangleRounded(r, 0.28f, 10, hover ? COLOR_BOTON_HOVER : COLOR_BOTON);
-    DrawRectangleRoundedLinesEx(r, 0.28f, 10, 2.0f, hover ? COLOR_TEXTO : COLOR_LINEA);
+    Color relleno = activo ? COLOR_BOTON_ACTIVO
+                           : (hover ? COLOR_BOTON_HOVER : COLOR_BOTON);
+    Color borde   = activo ? COLOR_BOTON_ACTIVO
+                           : (hover ? COLOR_TEXTO : COLOR_LINEA);
+    Color tinta   = activo ? COLOR_FONDO : COLOR_TEXTO;
 
-    int tam = 26;
-    int ancho = MeasureText(texto, tam);
-    DrawText(texto,
-             static_cast<int>(r.x + (r.width - ancho) / 2.0f),
-             static_cast<int>(r.y + (r.height - tam) / 2.0f),
-             tam, COLOR_TEXTO);
+    DrawRectangleRounded(r, 0.28f, 10, relleno);
+    DrawRectangleRoundedLinesEx(r, 0.28f, 10, 2.0f, borde);
+
+    float tam = 26.0f;
+    Vector2 medida = medir(texto, tam);
+    escribir(texto,
+             r.x + (r.width - medida.x) / 2.0f,
+             r.y + (r.height - medida.y) / 2.0f,
+             tam, tinta);
 
     return hover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
@@ -167,13 +213,16 @@ void render::overlayResultado(const Layout& L, const char* titulo, Color color,
     DrawRectangleRoundedLinesEx(panel, 0.10f, 8, 3.0f, color);
 
     // El titulo se encoge si no cabe en el panel.
-    int tam = 76;
-    int ancho = MeasureText(titulo, tam);
-    int maxAncho = static_cast<int>(panel.width) - 80;
+    float tam = 80.0f;
+    float ancho = medir(titulo, tam).x;
+    float maxAncho = panel.width - 80.0f;
     if (ancho > maxAncho) tam = tam * maxAncho / ancho;
 
-    dibujarTextoCentrado(titulo, static_cast<int>(panel.y + 62), tam, color);
-    dibujarTextoCentrado(subtitulo, static_cast<int>(panel.y + 192), 26, COLOR_TEXTO);
+    float xTitulo = GetScreenWidth() / 2.0f - medir(titulo, tam).x / 2.0f;
+    escribir(titulo, xTitulo, panel.y + 62.0f, tam, color);
+
+    float xSub = GetScreenWidth() / 2.0f - medir(subtitulo, 26.0f).x / 2.0f;
+    escribir(subtitulo, xSub, panel.y + 192.0f, 26.0f, COLOR_TEXTO);
 }
 
 // ---------------------------------------------------------------------------

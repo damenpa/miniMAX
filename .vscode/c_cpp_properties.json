@@ -5,7 +5,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/include",
-                "${workspaceFolder}/vendor/raylib/include"
+                "${workspaceFolder}/lib/raylib/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/g++",
