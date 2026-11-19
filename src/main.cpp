@@ -3,9 +3,9 @@
 #include "tablero.hpp"
 
 enum class Pantalla {
-    Inicio,   // elegir dificultad y quien empieza
-    Jugando,  // partida en curso
-    Fin       // resultado + Enter para reiniciar
+    Inicio, 
+    Jugando, 
+    Fin      
 };
 
 int main() {
@@ -15,7 +15,7 @@ int main() {
     Pantalla pantalla = Pantalla::Inicio;
     Tablero tablero;
     bool turnoHumano = true;
-    int dificultad = 2;         // 1 = Facil, 2 = Medio, 3 = Dificil
+    int dificultad = 2;
 
     while (!render::debeCerrar()) {
 
